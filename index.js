@@ -17,13 +17,7 @@
     function () {
         "use strict";
 
-        //THE LEVEL OF LOG
         var LOG = {}
-        /**
-         * The LEVEL OF　THE　LOG
-        * @readonly
-        * @enum {number}
-        */
         LOG.LEVEL = {
             0: 'EMERGENCY',  //system unusable
             1: 'ALERT',      //immediate action required
@@ -87,7 +81,7 @@
          * @constructor
          * @param {object} opt - arguments object
          * @param {number} [opt.level=3] - log level {@link LOG.LEVEL}
-         * @param {string} [opt.mode='DEV'] - arguments object
+         * @param {string} [opt.mode=DEV] - DEV OR PROD
          * @param {function} [opt.send=function(){}] - if u need to send log to remote, u need to define send function
          */
         function XLog(opt) {
@@ -107,7 +101,20 @@
             this.msg = opt.msg
             this.stack = opt.stack
         }
-
+        /**
+         * THE LEVEL OF THE LOG
+         * XLog.LOG.LEVEL
+         * @enum {number}
+         * @example
+0: 'EMERGENCY',  //system unusable
+1: 'ALERT',      //immediate action required
+2: 'CRITICAL',   //condition critical
+3: 'ERROR',      //condition error
+4: 'WARN',       //condition warning
+5: 'NOTICE',     //condition normal, but significant
+6: 'INFO',       //a purely informational message
+7: 'LOG'         // LOG or debugging information
+        */
         XLog.LOG = LOG
         /**
          * @private
@@ -173,7 +180,7 @@
          * Get the log data by `level`
          *
          * @param {number} level - the level of log item
-         * @returns XLog.data
+         * @returns  {object} XLog.data
          */
         XLog.prototype.get = function (level) {
             return this.data[LOG.LEVEL[level]] || []
@@ -305,7 +312,6 @@
                 return true;
             };
         }
-
         return XLog
     }
 ));
