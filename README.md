@@ -1,4 +1,3 @@
-PS E:\git\TechCloud\xlog> jsdoc2md index.js
 <a name="XLog"></a>
 
 ## Example
