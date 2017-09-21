@@ -1,6 +1,9 @@
 PS E:\git\TechCloud\xlog> jsdoc2md index.js
 <a name="XLog"></a>
 
+## Example
+<img src="./example.png" alt="xlog example">
+
 ## XLog
 **Kind**: global class
 
