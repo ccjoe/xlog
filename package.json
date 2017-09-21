@@ -1,0 +1,24 @@
+{
+  "name": "xlog",
+  "version": "1.0.0",
+  "description": "js log info collection trace",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"PLS open index.html and check console, print log.show() then enter\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ccjoe/xlog.git"
+  },
+  "keywords": [
+    "js",
+    "log",
+    "debug"
+  ],
+  "author": "ccjoe",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ccjoe/xlog/issues"
+  },
+  "homepage": "https://github.com/ccjoe/xlog#readme"
+}
