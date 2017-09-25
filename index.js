@@ -15,24 +15,13 @@
     }
 }(this,
     function () {
-        "use strict";
 
         var LOG = {}
-        LOG.LEVEL = {
-            0: 'EMERGENCY',  //system unusable
-            1: 'ALERT',      //immediate action required
-            2: 'CRITICAL',   //condition critical
-            3: 'ERROR',      //condition error
-            4: 'WARN',       //condition warning
-            5: 'NOTICE',     //condition normal, but significant
-            6: 'INFO',       //a purely informational message
-            7: 'LOG'         // LOG or debugging information
-        }
-
+        LOG.LEVEL = ['EMERGENCY','ALERT','CRITICAL','ERROR','WARN','NOTICE','INFO','LOG']
         LOG.LEVEL_UI = {
-            0: '#0054a5',
-            1: '#662e91',
-            2: '#fef200',
+            0: '#800156',
+            1: '#ff0272',
+            2: '#f38c03',
             3: '#ed1b24',
             4: '#f36523',
             5: '#00adef',
@@ -42,12 +31,13 @@
 
         LOG.NAMES = {}
         for(var level in LOG.LEVEL){
-            LOG.NAMES[LOG.LEVEL[level]] = level
+            LOG.NAMES[LOG.LEVEL[level]] = +level
         }
 
         LOG.MODE = {
             0: 'DEV',     //show in console
             1: 'PROD',    //NOT show in console
+            2: 'CLOSE'    //close global try catch and remove onerror
         }
         //THE DATA OF LOG, attention: prodcution needs to
         LOG.DATA = {}
@@ -81,7 +71,10 @@
          * @constructor
          * @param {object} opt - arguments object
          * @param {number} [opt.level=3] - log level {@link LOG.LEVEL}
-         * @param {string} [opt.mode=DEV] - DEV OR PROD
+         * @param {string} [opt.mode=DEV] - 'CLOSE' OR 'DEV' OR 'PROD' {@link LOG.MODE}
+         * DEV mode show log realtime,
+         * PROD mode show log manual by show() method
+         * CLOSE will be all Xlog.js and error monitor
          * @param {function} [opt.send=function(){}] - if u need to send log to remote, u need to define send function
          */
         function XLog(opt) {
@@ -89,9 +82,12 @@
             this.level =  opt.level || defaults.level     //
             this.mode = opt.mode || defaults.mode
             this.send = opt.send || defaults.send
+            this.close = this.mode === LOG.MODE[2]
             this.data = LOG.DATA
             this.init()
-            this._onError()
+            if(!this.close){
+                this._onError()
+            }
         }
 
         function Errors(opt) {
@@ -125,7 +121,7 @@
             var now = new Date()
             var time = '['+now.toLocaleTimeString()+ ' ' + now.getMilliseconds() + ']'
             var type = LOG.LEVEL[level]
-            return ["%c"+time+' '+type, "background-color: "+ LOG.LEVEL_UI[level]+";  border-radius:2px;"]
+            return ["%c"+time+' '+type, "background-color: "+ LOG.LEVEL_UI[level]+";  border-radius:2px; padding: 0 2px;"]
         }
 
         /**
@@ -137,12 +133,12 @@
 
         /**
          * 添加对应的日志
-         * XLog#error
-         * XLog#warn
-         * XLog#info
-         * XLog#log
+         * @method XLog#error console.error
+         * @method XLog#warn console.error
+         * @method XLog#info console.info
+         * @method XLog#log console.log
          */
-        LOG.REMAIN.forEach(function(type){
+        LOG.LEVEL.forEach(function(type){
             XLog.prototype[type.toLowerCase()] = function(){
                 this.add(LOG.NAMES[type], arguments)
             }
@@ -160,6 +156,7 @@
          * @param {any} loginfo
          */
         XLog.prototype.add = function (level, loginfo) {
+            if(this.close) return
             var time = new Date()
             var logPrefix = XLog.setPrefix(level)
             //假设这种模型就是参数
@@ -179,18 +176,20 @@
         /**
          * Get the log data by `level`
          *
-         * @param {number} level - the level of log item
+         * @param {{number|string}} level - the level Number or Name String of log item
          * @returns  {object} XLog.data
          */
         XLog.prototype.get = function (level) {
-            return this.data[LOG.LEVEL[level]] || []
+            level = typeof level === 'number' ? LOG.LEVEL[level] : level
+            return this.data[level] || []
         }
 
         /**
          * set log level, just show log below level number
-         * @param {number} level - the level of log item
+         * @param {{number|string}} level - the level Number or Name String of log item
          */
         XLog.prototype.set = function (level) {
+            level = typeof level === 'number' ? level : LOG.NAMES[level]
             this.level = level
         }
 
@@ -204,7 +203,7 @@
 
         /**
          * Show All XLogs 显示所有日志信息
-         * @param {number} level - the level of log item
+         * @param {{number|string}} level - the level Number or Name String of log item
          * @param {object} opt
          * @param {string} [opt.sort='time'] time or type- show log by time sorted
          * @param {boolean} [opt.only=false]  just show level number only
@@ -214,6 +213,7 @@
             var that = this
             var sortTime = opt.sort === 'time'
             var timeArr = []
+            level = typeof level === 'number' ? level : LOG.NAMES[level]
             level = level === void 0 ? this.level : level
 
             for (var infoKey in this.data) {
@@ -229,7 +229,7 @@
             }
 
             if(sortTime){
-                timeArr.sort(function(item){return -(+item.time)}).forEach(function (info) {
+                 timeArr.sort(function(i1, i2){ return i1.time > i2.time}).forEach(function (info) {
                     that._itemShow(keyLevel, info, opt.only)
                 })
             }
@@ -238,9 +238,10 @@
 
         /**
          * @desc 重置所有日志内容
-         * @param {number} level - the level of log item
+         * @param {{number|string}} level - the level Number or Name String of log item
          */
         XLog.prototype.reset = function (level) {
+            level = typeof level === 'number' ? level : LOG.NAMES[level]
             reset(level)
         }
 
@@ -252,11 +253,12 @@
          */
         XLog.prototype.catch = function (f) {
             var that = this
-            return function () {
+            return this.close ? f : function () {
                 try {
-                    f.apply(this, arguments);
+                   return f.apply(this, arguments);
                 } catch (e) {
                     that.add(3, new Errors({ msg: e.message, stack: e.stack }))
+                    throw e; // re-throw the error
                 }
             }
         }
@@ -266,11 +268,13 @@
          * @param {object} m - module with functions
          */
         XLog.prototype.catchModule = function (m) {
-        for(var i in m){
-            if(typeof m[i] === 'function'){
-                    m[i] =this.catch(m[i])
+            if(!this.close){
+                for(var i in m){
+                    if(typeof m[i] === 'function'){
+                            m[i] =this.catch(m[i])
+                    }
+                }
             }
-        }
         }
 
 

@@ -1,5 +1,18 @@
 <a name="XLog"></a>
 
+##XLog
+_XLog_ is a log management by PROD or DEV,
+- IN PROD Mode, just collect the log info, donot show in console
+- IN DEV Mode, console info will be show real time
+- IN CLOSE Mode, console will be not effected
+
+## Feature
+- log ui
+- log level
+- log group and sort by time
+- log show by real-time(DEV) or manual call at console(PROD)
+- error catch auto
+
 ## Example
 <img src="./example.png" alt="xlog example">
 
@@ -132,7 +145,7 @@ decorate every function of module m with try catch wrapper
 <a name="XLog.LOG"></a>
 
 ### XLog.LOG : <code>enum</code>
-XLog.LOG.LEVELHE LOG
+XLog.LOG.LEVEL
 
 **Kind**: static enum of [<code>XLog</code>](#XLog)
 **Example**
