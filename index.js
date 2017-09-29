@@ -70,7 +70,7 @@
          * create a XLog instance
          * @constructor
          * @param {object} opt - arguments object
-         * @param {number} [opt.level=3] - log level {@link LOG.LEVEL}
+         * @param {number} [opt.level=3] - log level {@link LOG.LEVEL} below level not show auto or manual, but set() to change LEVEL
          * @param {string} [opt.mode=DEV] - 'CLOSE' OR 'DEV' OR 'PROD' {@link LOG.MODE}
          * DEV mode show log realtime,
          * PROD mode show log manual by show() method
@@ -144,14 +144,22 @@
             }
         })
 
-        /**  Get the size of all local log */
+        /**
+         * Get the size of all local log
+         * @return {obejct} - Object {len: 2827, byte: 2903, size: 2.8349609375}
+         */
         XLog.prototype.size = function () {
-            return JSON.stringify(this.data).length
+            var str = JSON.stringify(this.data)
+            var byte = encodeURI(str).split(/%..|./).length - 1
+            return {
+                len: str.length,
+                byte: byte, //utf-8 characters 3 bytes
+                size: byte/1024 //kb
+            }
         }
 
         /**
          * add a log to log data
-         *
          * @param {number} level - the level of log item
          * @param {any} loginfo
          */
@@ -166,17 +174,17 @@
                 logPrefix.push(loginfo)
             }
             logPrefix.time = time
+            logPrefix.level = level
             loginfo = logPrefix
             if(this.mode === 'DEV'){
-                this._itemShow(level, loginfo)
+                this._itemShow(loginfo)
             }
             this.data[LOG.LEVEL[level]].push(loginfo)
         }
 
         /**
          * Get the log data by `level`
-         *
-         * @param {{number|string}} level - the level Number or Name String of log item
+         * @param {number|string} level - the level Number or Name String of log item
          * @returns  {object} XLog.data
          */
         XLog.prototype.get = function (level) {
@@ -186,59 +194,113 @@
 
         /**
          * set log level, just show log below level number
-         * @param {{number|string}} level - the level Number or Name String of log item
+         * @param {number|string} level - the level Number or Name String of log item
          */
         XLog.prototype.set = function (level) {
             level = typeof level === 'number' ? level : LOG.NAMES[level]
             this.level = level
         }
 
-        XLog.prototype._itemShow = function(level, loginfo,  only){
-            if (!only ? level >= this.level : level === this.level) {
-                var levelKey = LOG.LEVEL[level]
-                var hasMatch = ~LOG.REMAIN.indexOf(levelKey)
-                console[hasMatch ? levelKey.toLowerCase() : 'log'].apply(null, Array.isArray(loginfo) ? loginfo : [loginfo])
-            }
+        XLog.prototype._itemShow = function(loginfo){
+            var level = loginfo.level
+            // if (!limit || (limit && (level <= this.level))) { }
+            var levelKey = LOG.LEVEL[level]
+            var hasMatch = ~LOG.REMAIN.indexOf(levelKey)
+            console[hasMatch ? levelKey.toLowerCase() : 'log'].apply(null, Array.isArray(loginfo) ? loginfo : [loginfo])
+
         }
 
         /**
-         * Show All XLogs 显示所有日志信息
-         * @param {{number|string}} level - the level Number or Name String of log item
-         * @param {object} opt
-         * @param {string} [opt.sort='time'] time or type- show log by time sorted
-         * @param {boolean} [opt.only=false]  just show level number only
+         * Show All XLogs 显示所有日志信息(受限不能大于XLOG.level), 传入level则显示level: 0~number, level name则仅显示name 对应的level
+         * @param {number|string} level - the level Number or Name String of log item
+         * @param {string} [sort='time'] time or group- show log by time sorted
+         * @example
+         * XLOG.show()  print level 0~3 [this.level=3]
+         * XLOG.show(0)  print level 0
+         * XLOG.show(1)  print level 0-1
+         * XLOG.show(n)  print level 0-n, n max is 7
+         * XLOG.show('EMERGENCY') optional ['ALERT','CRITICAL','ERROR','WARN','NOTICE','INFO','LOG'] print corresponding level
          */
-        XLog.prototype.show = function (level, opt) {
-            opt = opt || {sort: 'time'}
+        XLog.prototype.show = function (level, sort) {
+            sort = sort || 'time'
+            level = level===void 0 ? this.level : level
+
             var that = this
-            var sortTime = opt.sort === 'time'
+            var sortTime = sort === 'time'
             var timeArr = []
-            level = typeof level === 'number' ? level : LOG.NAMES[level]
-            level = level === void 0 ? this.level : level
+
+            if(typeof level !== 'number'){
+                this.find(null, LOG.NAMES[level])
+                return
+            }
 
             for (var infoKey in this.data) {
                 var keyData = this.data[infoKey]
                 var keyLevel = Number(LOG.NAMES[infoKey])
-                if(sortTime){
-                    timeArr = timeArr.concat(keyData)
-                }else{
-                    keyData.forEach(function (info) {
-                        that._itemShow(keyLevel, info, opt.only)
-                    })
+                if(keyLevel <= level){
+                    if(sortTime){
+                        timeArr = timeArr.concat(keyData)
+                    }else{
+                        keyData.forEach(function (info) {
+                            that._itemShow(info)
+                        })
+                    }
                 }
             }
 
             if(sortTime){
                  timeArr.sort(function(i1, i2){ return i1.time > i2.time}).forEach(function (info) {
-                    that._itemShow(keyLevel, info, opt.only)
+                    that._itemShow(info)
+                })
+            }
+        }
+
+       /**
+         * Show and Print the log info by str or level
+         * @param {string} str - find log by str, find log by console， level，stack info, etc...
+         * @param {number|string} level - the level Number or Name String of log item find, if null no level limited
+         */
+        XLog.prototype.find = function (str, level) {
+            level = typeof level === 'number' ? LOG.LEVEL[level] : level
+            var that = this
+
+            var filterShow = function(levelData){
+                return levelData.filter(function(levelItem){
+                    if(!str){
+                        that._itemShow(levelItem)
+                        return true
+                    }
+
+                    var show = levelItem.filter(function(item, index){
+                        //1 is console style
+                        if(index!==1 && item){
+                            if(typeof item==='string')
+                                return !!~item.indexOf(str)
+                            else
+                                return (item.msg && !!~item.msg.indexOf(str)) || (item.stack && !!~item.stack.indexOf(str))
+                        }
+                    }).length ? true : false
+                    show && that._itemShow(levelItem)
+
+                    return show
                 })
             }
 
+            var filteredData = {}
+            if(level){
+                var data = this.data[level] || []
+                filteredData[level] = filterShow(data)
+            }else{
+                for(var key in this.data){
+                    filteredData[key] = filterShow(this.data[key])
+                }
+            }
+            // return filteredData
         }
 
         /**
-         * @desc 重置所有日志内容
-         * @param {{number|string}} level - the level Number or Name String of log item
+         * @desc reset log data 重置所有日志内容
+         * @param {number|string} level - the level Number or Name String of log item
          */
         XLog.prototype.reset = function (level) {
             level = typeof level === 'number' ? level : LOG.NAMES[level]

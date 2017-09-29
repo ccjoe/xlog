@@ -1,4 +1,4 @@
-var log = new XLog({mode: 'DEV'})
+var log = new XLog({mode: 'PROD'})
 var test = {
     testError: function (test) {
         var a;
@@ -37,13 +37,15 @@ log.add(7, 'this is a 7 by log.add')
 
 setTimeout(function () { log.add(5, 'this is a info by async') }, 200)
 log.catch(test.testError)('test show')
-log.send()
 
-//add try catch for all test2 function
+//add try catch for all test2 modules function and test.start function
 log.catchModule(test2);
+log.catch(test.start)()
+
+log.send()
 test2.testB()
 
-log.catch(test.start)()
+
 test.start()
 var a = {}
 a.b[0] = 123
